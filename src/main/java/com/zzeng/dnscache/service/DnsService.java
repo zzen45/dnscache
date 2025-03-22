@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.net.InetAddress;
 import java.time.Duration;
@@ -28,6 +29,7 @@ public class DnsService {
                     InetAddress address = InetAddress.getByName(domain);
                     return address.getHostAddress();
                 })
+                .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(ip ->
                         redisTemplate.opsForValue()
                                 .set(domain, ip, Duration.ofMinutes(5))
