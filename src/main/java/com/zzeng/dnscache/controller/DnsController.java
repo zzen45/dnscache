@@ -1,5 +1,6 @@
 package com.zzeng.dnscache.controller;
 
+import com.zzeng.dnscache.model.DnsRecord;
 import com.zzeng.dnscache.service.DnsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -17,26 +18,40 @@ public class DnsController {
         this.dnsService = dnsService;
     }
 
+    // Test using -> http://localhost:8080/api/dns
+    // {domain} = example.com
+
+    // GET /resolve?domain=example.com
+    // → Returns IP address (from cache or resolved)
     @GetMapping("/resolve")
-    public Mono<String> resolve(@RequestParam String domain) {
-        return dnsService.resolveDomain(domain);
+    public Mono<String> resolve(@RequestParam String domain,
+                                @RequestParam(required = false, defaultValue = "300") long ttl) {
+        return dnsService.resolveDomain(domain, ttl);
     }
 
+    // GET /cache/{domain}
+    // → Returns cached IP for domain (if exists)
     @GetMapping("/cache/{domain}")
     public Mono<String> getCached(@PathVariable String domain) {
         return dnsService.getCachedRecord(domain);
     }
 
+    // GET /cache
+    // → Returns all cached domain-IP pairs
     @GetMapping("/cache")
-    public Flux<Map.Entry<String, String>> getAllCached() {
+    public Flux<DnsRecord> getAllCached() {
         return dnsService.getAllCachedRecords();
     }
 
+    // DELETE /cache/{domain}
+    // → Deletes a specific cached domain
     @DeleteMapping("/cache/{domain}")
     public Mono<Boolean> deleteCached(@PathVariable String domain) {
         return dnsService.deleteCachedRecord(domain);
     }
 
+    // DELETE /cache
+    // → Clears entire cache
     @DeleteMapping("/cache")
     public Mono<String> clearCache() {
         return dnsService.clearCache();

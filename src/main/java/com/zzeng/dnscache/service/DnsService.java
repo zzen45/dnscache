@@ -1,5 +1,6 @@
 package com.zzeng.dnscache.service;
 
+import com.zzeng.dnscache.model.DnsRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -20,44 +21,66 @@ public class DnsService {
         this.redisTemplate = redisTemplate;
     }
 
+    /**
+     * Resolves a domain name using cache or DNS lookup.
+     * - If the domain is cached, return it.
+     * - If not, resolve and cache it, then return the IP.
+     */
     public Mono<String> resolveDomain(String domain) {
+        return resolveDomain(domain, 300); // fallback to default TTL
+    }
+    public Mono<String> resolveDomain(String domain, long ttlSeconds) {
         return redisTemplate.opsForValue().get(domain)
-                .switchIfEmpty(Mono.defer(() -> resolveAndCache(domain)));
+                .switchIfEmpty(Mono.defer(() -> resolveAndCache(domain, ttlSeconds)));
     }
 
-    private Mono<String> resolveAndCache(String domain) {
-        return Mono.fromCallable(() -> {
-                    InetAddress address = InetAddress.getByName(domain);
-                    return address.getHostAddress();
-                })
+    /**
+     * Performs actual DNS lookup and stores the result in Redis with a TTL.
+     * TTL is currently set to 5 minutes.
+     */
+    private Mono<String> resolveAndCache(String domain, long ttlSeconds) {
+        return Mono.fromCallable(() -> InetAddress.getByName(domain).getHostAddress())
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(ip ->
                         redisTemplate.opsForValue()
-                                .set(domain, ip, Duration.ofMinutes(5))
+                                .set(domain, ip, Duration.ofSeconds(ttlSeconds))
                                 .thenReturn(ip)
                 );
     }
 
-    public Flux<Map.Entry<String, String>> getAllCachedRecords() {
+    /**
+     * Returns a stream of all cached domain-IP entries in Redis.
+     * Each entry is returned as a Map.Entry<String, String>.
+     */
+    public Flux<DnsRecord> getAllCachedRecords() {
         return redisTemplate.scan()
                 .flatMap(key -> redisTemplate.opsForValue().get(key)
-                        .map(value -> Map.entry(key, value))
+                        .map(ip -> new DnsRecord(key, ip, 300, false)) // placeholder TTL & manual flag
                 );
     }
 
+    /**
+     * Returns a cached IP for a given domain if exists in Redis.
+     */
     public Mono<String> getCachedRecord(String domain) {
         return redisTemplate.opsForValue().get(domain);
     }
 
+    /**
+     * Delete a domain from Redis cache.
+     */
     public Mono<Boolean> deleteCachedRecord(String domain) {
         return redisTemplate.delete(domain).map(count -> count > 0);
     }
 
+    /**
+     * Clears all keys from Redis cache.
+     */
     public Mono<String> clearCache() {
-        return redisTemplate.scan()
-                .collectList()
-                .flatMapMany(Flux::fromIterable)
-                .flatMap(redisTemplate::delete)
+        return redisTemplate.scan()  // scan all
+                .collectList()  // all -> list
+                .flatMapMany(Flux::fromIterable)  // list -> stream
+                .flatMap(redisTemplate::delete)  // delete each key
                 .then(Mono.just("Cache cleared"));
     }
 
