@@ -1,18 +1,16 @@
 package com.zzeng.dnscache.model;
 
-public class DnsRecord {
+public class DnsManualEntryRequest {
     private String domain;
     private String ip;
     private long ttl;
-    private boolean isManual;
 
-    public DnsRecord() {}
+    public DnsManualEntryRequest() {}
 
-    public DnsRecord(String domain, String ip, long ttl, boolean isManual) {
+    public DnsManualEntryRequest(String domain, String ip, long ttl) {
         this.domain = domain;
         this.ip = ip;
         this.ttl = ttl;
-        this.isManual = isManual;
     }
 
     public String getDomain() {
@@ -37,13 +35,5 @@ public class DnsRecord {
 
     public void setTtl(long ttl) {
         this.ttl = ttl;
-    }
-
-    public boolean isManual() {
-        return isManual;
-    }
-
-    public void setManual(boolean Manual) {
-        isManual = Manual;
     }
 }

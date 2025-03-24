@@ -1,5 +1,8 @@
 package com.zzeng.dnscache.service;
 
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zzeng.dnscache.model.DnsRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
@@ -7,18 +10,20 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.core.publisher.Flux;
-import java.util.Map;
 import java.net.InetAddress;
 import java.time.Duration;
+
 
 @Service
 public class DnsService {
 
     private final ReactiveStringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
 
     @Autowired
-    public DnsService(ReactiveStringRedisTemplate redisTemplate) {
+    public DnsService(ReactiveStringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
         this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -26,11 +31,18 @@ public class DnsService {
      * - If the domain is cached, return it.
      * - If not, resolve and cache it, then return the IP.
      */
-    public Mono<String> resolveDomain(String domain) {
+    public Mono<DnsRecord> resolveDomain(String domain) {
         return resolveDomain(domain, 300); // fallback to default TTL
     }
-    public Mono<String> resolveDomain(String domain, long ttlSeconds) {
+    public Mono<DnsRecord> resolveDomain(String domain, long ttlSeconds) {
         return redisTemplate.opsForValue().get(domain)
+                .flatMap(json -> {
+                    try {
+                        return Mono.just(new ObjectMapper().readValue(json, DnsRecord.class));
+                    } catch (Exception e) {
+                        return Mono.empty();
+                    }
+                })
                 .switchIfEmpty(Mono.defer(() -> resolveAndCache(domain, ttlSeconds)));
     }
 
@@ -38,14 +50,21 @@ public class DnsService {
      * Performs actual DNS lookup and stores the result in Redis with a TTL.
      * TTL is currently set to 5 minutes.
      */
-    private Mono<String> resolveAndCache(String domain, long ttlSeconds) {
+    private Mono<DnsRecord> resolveAndCache(String domain, long ttlSeconds) {
         return Mono.fromCallable(() -> InetAddress.getByName(domain).getHostAddress())
                 .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(ip ->
-                        redisTemplate.opsForValue()
-                                .set(domain, ip, Duration.ofSeconds(ttlSeconds))
-                                .thenReturn(ip)
-                );
+                .flatMap(ip -> {
+                    DnsRecord record = new DnsRecord(domain, ip, ttlSeconds, false);
+                    String json;
+                    try {
+                        json = new ObjectMapper().writeValueAsString(record);
+                    } catch (Exception e) {
+                        return Mono.error(e);
+                    }
+                    return redisTemplate.opsForValue()
+                            .set(domain, json, Duration.ofSeconds(ttlSeconds))
+                            .thenReturn(record);
+                });
     }
 
     /**
@@ -55,15 +74,29 @@ public class DnsService {
     public Flux<DnsRecord> getAllCachedRecords() {
         return redisTemplate.scan()
                 .flatMap(key -> redisTemplate.opsForValue().get(key)
-                        .map(ip -> new DnsRecord(key, ip, 300, false)) // placeholder TTL & manual flag
+                        .flatMap(json -> {
+                            try {
+                                DnsRecord record = objectMapper.readValue(json, DnsRecord.class);
+                                return Mono.just(record);
+                            } catch (Exception e) {
+                                return Mono.empty();
+                            }
+                        })
                 );
     }
 
     /**
      * Returns a cached IP for a given domain if exists in Redis.
      */
-    public Mono<String> getCachedRecord(String domain) {
-        return redisTemplate.opsForValue().get(domain);
+    public Mono<DnsRecord> getCachedRecord(String domain) {
+        return redisTemplate.opsForValue().get(domain)
+                .flatMap(json -> {
+                    try {
+                        return Mono.just(new ObjectMapper().readValue(json, DnsRecord.class));
+                    } catch (Exception e) {
+                        return Mono.empty();
+                    }
+                });
     }
 
     /**
@@ -82,6 +115,18 @@ public class DnsService {
                 .flatMapMany(Flux::fromIterable)  // list -> stream
                 .flatMap(redisTemplate::delete)  // delete each key
                 .then(Mono.just("Cache cleared"));
+    }
+
+    /**
+     * Manually insert or override a DNS entry.
+     */
+    public Mono<DnsRecord> saveManualEntry(String domain, String ip, long ttlSeconds) throws JsonProcessingException {
+        DnsRecord record = new DnsRecord(domain, ip, ttlSeconds, true);
+        String json = objectMapper.writeValueAsString(record);
+
+        return redisTemplate.opsForValue()
+                .set(domain, json, Duration.ofSeconds(ttlSeconds))
+                .thenReturn(record);
     }
 
 }

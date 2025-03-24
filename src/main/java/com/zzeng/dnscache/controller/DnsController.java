@@ -1,12 +1,13 @@
 package com.zzeng.dnscache.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.zzeng.dnscache.model.DnsManualEntryRequest;
 import com.zzeng.dnscache.model.DnsRecord;
 import com.zzeng.dnscache.service.DnsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Flux;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/dns")
@@ -24,15 +25,15 @@ public class DnsController {
     // GET /resolve?domain=example.com
     // → Returns IP address (from cache or resolved)
     @GetMapping("/resolve")
-    public Mono<String> resolve(@RequestParam String domain,
-                                @RequestParam(required = false, defaultValue = "300") long ttl) {
+    public Mono<DnsRecord> resolve(@RequestParam String domain,
+                                   @RequestParam(required = false, defaultValue = "300") long ttl) {
         return dnsService.resolveDomain(domain, ttl);
     }
 
     // GET /cache/{domain}
     // → Returns cached IP for domain (if exists)
     @GetMapping("/cache/{domain}")
-    public Mono<String> getCached(@PathVariable String domain) {
+    public Mono<DnsRecord> getCached(@PathVariable String domain) {
         return dnsService.getCachedRecord(domain);
     }
 
@@ -55,6 +56,17 @@ public class DnsController {
     @DeleteMapping("/cache")
     public Mono<String> clearCache() {
         return dnsService.clearCache();
+    }
+
+    // POST /cache
+    // → Manually insert or override a DNS entry
+    @PostMapping("/cache")
+    public Mono<DnsRecord> addManualEntry(@RequestBody DnsManualEntryRequest request) throws JsonProcessingException {
+        return dnsService.saveManualEntry(
+                request.getDomain(),
+                request.getIp(),
+                request.getTtl()
+        );
     }
 
 }
