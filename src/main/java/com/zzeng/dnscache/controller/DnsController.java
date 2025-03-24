@@ -30,6 +30,7 @@ public class DnsController {
         return dnsService.resolveDomain(domain, ttl);
     }
 
+
     // GET /cache/{domain}
     // → Returns cached IP for domain (if exists)
     @GetMapping("/cache/{domain}")
