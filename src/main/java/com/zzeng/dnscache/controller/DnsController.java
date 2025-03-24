@@ -3,7 +3,7 @@ package com.zzeng.dnscache.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.zzeng.dnscache.model.DnsManualEntryRequest;
 import com.zzeng.dnscache.model.DnsRecord;
-import com.zzeng.dnscache.service.DnsService;
+import com.zzeng.dnscache.service.DnsServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
@@ -12,12 +12,13 @@ import reactor.core.publisher.Flux;
 @RestController
 @RequestMapping("/api/dns")
 public class DnsController {
-    private final DnsService dnsService;
+    private final DnsServiceInterface dnsService;
 
     @Autowired
-    public DnsController(DnsService dnsService) {
+    public DnsController(DnsServiceInterface dnsService) {
         this.dnsService = dnsService;
     }
+
 
     // Test using -> http://localhost:8080/api/dns
     // {domain} = example.com

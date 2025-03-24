@@ -14,7 +14,7 @@ import java.net.InetAddress;
 
 
 @Service
-public class DnsService {
+public class DnsService implements DnsServiceInterface {
 
     private final DnsCacheRepository dnsCacheRepository;
     private final ObjectMapper objectMapper;
