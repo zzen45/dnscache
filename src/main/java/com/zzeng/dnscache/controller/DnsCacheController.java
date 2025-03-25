@@ -1,11 +1,9 @@
 package com.zzeng.dnscache.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.zzeng.dnscache.dto.*;
 import com.zzeng.dnscache.model.DnsRecord;
 import com.zzeng.dnscache.service.DnsService;
-import com.zzeng.dnscache.dto.DnsRecordCreateRequest;
-import com.zzeng.dnscache.dto.TtlUpdateRequest;
-import com.zzeng.dnscache.dto.DnsBatchRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -38,25 +36,28 @@ public class DnsCacheController {
 
     // --- Create ---
     @PostMapping("/cache")
-    public Mono<DnsRecord> createManualEntry(@Valid @RequestBody DnsRecordCreateRequest request) throws JsonProcessingException {
+    public Mono<DnsRecordResponse> createManualEntry(@Valid @RequestBody DnsRecordCreateRequest request) throws JsonProcessingException {
         DnsRecord record = new DnsRecord(
                 request.getDomain(),
                 request.getIp(),
                 request.getTtl(),
                 true
         );
-        return dnsService.createManualEntry(record);
+        return dnsService.createManualEntry(record)
+                .map(DnsRecordMapper::toResponse);
     }
 
     // --- Read ---
     @GetMapping("/cache/{domain}")
-    public Mono<DnsRecord> getCachedRecord(@PathVariable String domain) {
-        return dnsService.getCachedRecord(domain);
+    public Mono<DnsRecordResponse> getCachedRecord(@PathVariable String domain) {
+        return dnsService.getCachedRecord(domain)
+                .map(DnsRecordMapper::toResponse);
     }
 
     @GetMapping("/cache")
-    public Flux<DnsRecord> getAllCachedRecords() {
-        return dnsService.getAllCachedRecords();
+    public Flux<DnsRecordResponse> getAllCachedRecords() {
+        return dnsService.getAllCachedRecords()
+                .map(DnsRecordMapper::toResponse);
     }
 
     @GetMapping("/cache/exists/{domain}")
