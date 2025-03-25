@@ -6,6 +6,9 @@ import com.zzeng.dnscache.config.DnsProperties;
 import com.zzeng.dnscache.model.DnsRecord;
 import com.zzeng.dnscache.repository.DnsCacheRepository;
 import com.zzeng.dnscache.util.JsonUtil;
+import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -21,6 +24,7 @@ public class DnsServiceImpl implements DnsService {
     private final DnsCacheRepository dnsCacheRepository;
     private final ObjectMapper objectMapper;
     private final long defaultTtl;
+    private static final Logger logger = LoggerFactory.getLogger(DnsServiceImpl.class);
 
     @Autowired
     public DnsServiceImpl(DnsCacheRepository dnsCacheRepository,
@@ -30,6 +34,12 @@ public class DnsServiceImpl implements DnsService {
         this.objectMapper = objectMapper;
         this.defaultTtl = dnsProperties.getTtl();
     }
+
+    @PostConstruct
+    public void init() {
+        logger.info("DnsServiceImpl initialized with default TTL: {} seconds", defaultTtl);
+    }
+
 
     // --- Resolution ---
     @Override
