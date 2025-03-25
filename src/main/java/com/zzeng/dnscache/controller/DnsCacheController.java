@@ -31,7 +31,8 @@ public class DnsCacheController {
 
     // --- Create ---
     @PostMapping("/cache")
-    public Mono<DnsRecordResponse> createManualEntry(@Valid @RequestBody DnsRecordCreateRequest request) throws JsonProcessingException {
+    public Mono<DnsRecordResponse> createManualEntry(@Valid @RequestBody DnsRecordCreateRequest request)
+            throws JsonProcessingException {
         return dnsService.createManualEntry(DnsRecordMapper.toManualDnsRecord(request));
     }
 
