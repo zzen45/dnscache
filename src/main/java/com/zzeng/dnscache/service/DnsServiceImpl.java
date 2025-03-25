@@ -49,14 +49,12 @@ public class DnsServiceImpl implements DnsService {
 
     @Override
     public Mono<DnsRecord> resolveDomain(String domain, long ttlSeconds) {
-        // Check if exists in cache
         return dnsCacheRepository.get(domain)
                 .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper))
                 .switchIfEmpty(Mono.defer(() -> resolveAndCache(domain, ttlSeconds)));
     }
 
     private Mono<DnsRecord> resolveAndCache(String domain, long ttlSeconds) {
-        // Actually do the DNS lookup & store
         return Mono.fromCallable(() -> InetAddress.getByName(domain).getHostAddress())
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(ip -> {
@@ -115,7 +113,7 @@ public class DnsServiceImpl implements DnsService {
                             .flatMap(serialized -> dnsCacheRepository.set(domain, serialized, newTTL))
                             .map(saved -> true);
                 })
-                .defaultIfEmpty(false); // domain not found
+                .defaultIfEmpty(false);
     }
 
     // --- Cache Delete ---
