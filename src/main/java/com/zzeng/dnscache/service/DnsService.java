@@ -1,9 +1,10 @@
 package com.zzeng.dnscache.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zzeng.dnscache.config.DnsProperties;
 import com.zzeng.dnscache.model.DnsRecord;
 import com.zzeng.dnscache.repository.DnsCacheRepository;
+import com.zzeng.dnscache.util.JsonUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -15,31 +16,56 @@ import java.net.InetAddress;
 @Service
 public class DnsService implements DnsServiceInterface {
 
+    // Dependencies
     private final DnsCacheRepository dnsCacheRepository;
     private final ObjectMapper objectMapper;
+    private final long defaultTtl;
 
     @Autowired
-    public DnsService(DnsCacheRepository dnsCacheRepository, ObjectMapper objectMapper) {
+    public DnsService(DnsCacheRepository dnsCacheRepository, ObjectMapper objectMapper, DnsProperties dnsProperties) {
         this.dnsCacheRepository = dnsCacheRepository;
         this.objectMapper = objectMapper;
+        this.defaultTtl = dnsProperties.getTtl();
     }
 
+
+    // Resolution
     @Override
     public Mono<DnsRecord> resolveDomain(String domain) {
-        return resolveDomain(domain, 300);
+        return resolveDomain(domain, defaultTtl);
     }
 
     @Override
     public Mono<DnsRecord> resolveDomain(String domain, long ttlSeconds) {
         return dnsCacheRepository.get(domain)
-                .flatMap(json -> {
-                    try {
-                        return Mono.just(objectMapper.readValue(json, DnsRecord.class));
-                    } catch (Exception e) {
-                        return Mono.empty();
-                    }
-                })
+                .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper))
                 .switchIfEmpty(Mono.defer(() -> resolveAndCache(domain, ttlSeconds)));
+    }
+
+    private Mono<DnsRecord> resolveAndCache(String domain, long ttlSeconds) {
+        return Mono.fromCallable(() -> InetAddress.getByName(domain).getHostAddress())
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(ip -> {
+                    DnsRecord record = new DnsRecord(domain, ip, ttlSeconds, false);
+                    return JsonUtil.safeSerialize(record, objectMapper)
+                            .flatMap(json -> dnsCacheRepository.set(domain, json, ttlSeconds)
+                                    .thenReturn(record));
+                });
+    }
+
+
+    // Cache Reads
+    @Override
+    public Flux<DnsRecord> getAllCachedRecords() {
+        return dnsCacheRepository.scanKeys()
+                .flatMap(key -> dnsCacheRepository.get(key)
+                        .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper)));
+    }
+
+    @Override
+    public Mono<DnsRecord> getCachedRecord(String domain) {
+        return dnsCacheRepository.get(domain)
+                .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper));
     }
 
     @Override
@@ -49,48 +75,18 @@ public class DnsService implements DnsServiceInterface {
                 .defaultIfEmpty(false);
     }
 
-    private Mono<DnsRecord> resolveAndCache(String domain, long ttlSeconds) {
-        return Mono.fromCallable(() -> InetAddress.getByName(domain).getHostAddress())
-                .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(ip -> {
-                    DnsRecord record = new DnsRecord(domain, ip, ttlSeconds, false);
-                    String json;
-                    try {
-                        json = objectMapper.writeValueAsString(record);
-                    } catch (Exception e) {
-                        return Mono.error(e);
-                    }
-                    return dnsCacheRepository.set(domain, json, ttlSeconds)
-                            .thenReturn(record);
-                });
-    }
 
+    // Cache Writes
     @Override
-    public Flux<DnsRecord> getAllCachedRecords() {
-        return dnsCacheRepository.scanKeys()
-                .flatMap(key -> dnsCacheRepository.get(key)
-                        .flatMap(json -> {
-                            try {
-                                return Mono.just(objectMapper.readValue(json, DnsRecord.class));
-                            } catch (Exception e) {
-                                return Mono.empty();
-                            }
-                        })
-                );
+    public Mono<DnsRecord> saveManualEntry(DnsRecord record) {
+        record.setManual(true);
+        return JsonUtil.safeSerialize(record, objectMapper)
+                .flatMap(json -> dnsCacheRepository.set(record.getDomain(), json, record.getTtl())
+                        .thenReturn(record));
     }
 
-    @Override
-    public Mono<DnsRecord> getCachedRecord(String domain) {
-        return dnsCacheRepository.get(domain)
-                .flatMap(json -> {
-                    try {
-                        return Mono.just(objectMapper.readValue(json, DnsRecord.class));
-                    } catch (Exception e) {
-                        return Mono.empty();
-                    }
-                });
-    }
 
+    // Cache Deletes
     @Override
     public Mono<Boolean> deleteCachedRecord(String domain) {
         return dnsCacheRepository.delete(domain);
@@ -103,11 +99,4 @@ public class DnsService implements DnsServiceInterface {
                 .then(Mono.just("Cache cleared"));
     }
 
-    @Override
-    public Mono<DnsRecord> saveManualEntry(DnsRecord record) throws JsonProcessingException {
-        record.setManual(true);
-        String json = objectMapper.writeValueAsString(record);
-        return dnsCacheRepository.set(record.getDomain(), json, record.getTtl())
-                .thenReturn(record);
-    }
 }

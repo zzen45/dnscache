@@ -7,19 +7,19 @@ import reactor.core.publisher.Mono;
 
 public interface DnsServiceInterface {
 
+    // Resolution
     Mono<DnsRecord> resolveDomain(String domain);
-
     Mono<DnsRecord> resolveDomain(String domain, long ttlSeconds);
 
+    // Cache read
+    Mono<DnsRecord> getCachedRecord(String domain);
+    Flux<DnsRecord> getAllCachedRecords();
     Mono<Boolean> exists(String domain);
 
-    Flux<DnsRecord> getAllCachedRecords();
+    // Cache write
+    Mono<DnsRecord> saveManualEntry(DnsRecord record);
 
-    Mono<DnsRecord> getCachedRecord(String domain);
-
+    // Cache delete
     Mono<Boolean> deleteCachedRecord(String domain);
-
     Mono<String> clearCache();
-
-    Mono<DnsRecord> saveManualEntry(DnsRecord record) throws JsonProcessingException;
 }
