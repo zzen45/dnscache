@@ -31,9 +31,7 @@ public class DnsService implements DnsServiceInterface {
         this.defaultTtl = dnsProperties.getTtl();
     }
 
-    // ---------------------------
-    // Resolution
-    // ---------------------------
+    // --- Resolution ---
     @Override
     public Mono<DnsRecord> resolveDomain(String domain) {
         return resolveDomain(domain, defaultTtl);
@@ -59,20 +57,16 @@ public class DnsService implements DnsServiceInterface {
                 });
     }
 
-    // ---------------------------
-    // Cache Create
-    // ---------------------------
+    // --- Cache Create ---
     @Override
-    public Mono<DnsRecord> saveManualEntry(DnsRecord record) throws JsonProcessingException {
+    public Mono<DnsRecord> createManualEntry(DnsRecord record) throws JsonProcessingException {
         record.setManual(true);
         return JsonUtil.safeSerialize(record, objectMapper)
                 .flatMap(json -> dnsCacheRepository.set(record.getDomain(), json, record.getTtl())
                         .thenReturn(record));
     }
 
-    // ---------------------------
-    // Cache Read
-    // ---------------------------
+    // --- Cache Read ---
     @Override
     public Mono<DnsRecord> getCachedRecord(String domain) {
         return dnsCacheRepository.get(domain)
@@ -100,9 +94,7 @@ public class DnsService implements DnsServiceInterface {
                         .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper)));
     }
 
-    // ---------------------------
-    // Cache Update
-    // ---------------------------
+    // --- Cache Update ---
     @Override
     public Mono<Boolean> updateTTL(String domain, long newTTL) {
         return dnsCacheRepository.get(domain)
@@ -116,9 +108,7 @@ public class DnsService implements DnsServiceInterface {
                 .defaultIfEmpty(false); // domain not found
     }
 
-    // ---------------------------
-    // Cache Delete
-    // ---------------------------
+    // --- Cache Delete ---
     @Override
     public Mono<Boolean> deleteCachedRecord(String domain) {
         return dnsCacheRepository.delete(domain);
@@ -132,7 +122,7 @@ public class DnsService implements DnsServiceInterface {
     }
 
     @Override
-    public Mono<String> deleteManualEntries() {
+    public Mono<String> deleteAllManualEntries() {
         return dnsCacheRepository.scanKeys()
                 .flatMap(key -> dnsCacheRepository.get(key)
                         .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper))

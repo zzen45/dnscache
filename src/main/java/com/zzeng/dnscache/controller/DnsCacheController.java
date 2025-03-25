@@ -21,9 +21,7 @@ public class DnsCacheController {
         this.dnsService = dnsService;
     }
 
-    // ---------------------------
-    // DNS Resolution
-    // ---------------------------
+    // --- Resolution ---
     // GET /resolve?domain=example.com[&ttl=150]
     @GetMapping("/resolve")
     public Mono<DnsRecord> resolveDomain(@RequestParam String domain,
@@ -35,18 +33,14 @@ public class DnsCacheController {
         }
     }
 
-    // ---------------------------
-    // Cache Create
-    // ---------------------------
+    // --- Cache Create ---
     // POST /cache
     @PostMapping("/cache")
-    public Mono<DnsRecord> saveManualEntry(@RequestBody DnsRecord record) throws JsonProcessingException {
-        return dnsService.saveManualEntry(record);
+    public Mono<DnsRecord> createManualEntry(@RequestBody DnsRecord record) throws JsonProcessingException {
+        return dnsService.createManualEntry(record);
     }
 
-    // ---------------------------
-    // Cache Read
-    // ---------------------------
+    // --- Cache Read ---
     // GET /cache/{domain}
     @GetMapping("/cache/{domain}")
     public Mono<DnsRecord> getCachedRecord(@PathVariable String domain) {
@@ -71,9 +65,7 @@ public class DnsCacheController {
         return dnsService.getBatch(domains);
     }
 
-    // ---------------------------
-    // Cache Update
-    // ---------------------------
+    // --- Cache Update ---
     // PATCH /cache/{domain}/ttl?ttl=600
     @PatchMapping("/cache/{domain}/ttl")
     public Mono<Boolean> updateTTL(@PathVariable String domain,
@@ -81,9 +73,7 @@ public class DnsCacheController {
         return dnsService.updateTTL(domain, ttl);
     }
 
-    // ---------------------------
-    // Cache Delete
-    // ---------------------------
+    // --- Cache Delete ---
     // DELETE /cache/{domain}
     @DeleteMapping("/cache/{domain}")
     public Mono<Boolean> deleteCachedRecord(@PathVariable String domain) {
@@ -98,8 +88,8 @@ public class DnsCacheController {
 
     // DELETE /cache/manual
     @DeleteMapping("/cache/manual")
-    public Mono<String> deleteManualEntries() {
-        return dnsService.deleteManualEntries();
+    public Mono<String> deleteAllManualEntries() {
+        return dnsService.deleteAllManualEntries();
     }
 
     // DELETE /cache/batch
