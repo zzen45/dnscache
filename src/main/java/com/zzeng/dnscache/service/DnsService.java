@@ -115,12 +115,13 @@ public class DnsService implements DnsServiceInterface {
     /**
      * Manually insert or override a DNS entry.
      */
-    public Mono<DnsRecord> saveManualEntry(String domain, String ip, long ttlSeconds) throws JsonProcessingException {
-        DnsRecord record = new DnsRecord(domain, ip, ttlSeconds, true);
+    public Mono<DnsRecord> saveManualEntry(DnsRecord record) throws JsonProcessingException {
+        record.setManual(true); // Just in case
         String json = objectMapper.writeValueAsString(record);
 
-        return dnsCacheRepository.set(domain, json, ttlSeconds)
+        return dnsCacheRepository.set(record.getDomain(), json, record.getTtl())
                 .thenReturn(record);
     }
+
 
 }

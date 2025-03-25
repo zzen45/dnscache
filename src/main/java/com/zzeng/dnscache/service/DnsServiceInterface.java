@@ -19,6 +19,5 @@ public interface DnsServiceInterface {
 
     Mono<String> clearCache();
 
-    Mono<DnsRecord> saveManualEntry(String domain, String ip, long ttlSeconds) throws JsonProcessingException;
-
+    Mono<DnsRecord> saveManualEntry(DnsRecord record) throws JsonProcessingException;
 }
