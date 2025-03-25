@@ -13,11 +13,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.List;
 
 @Service
@@ -67,6 +70,9 @@ public class DnsServiceImpl implements DnsService {
     private Mono<DnsRecord> resolveAndCache(String domain, long ttlSeconds) {
         return Mono.fromCallable(() -> InetAddress.getByName(domain).getHostAddress())
                 .subscribeOn(Schedulers.boundedElastic())
+                .onErrorResume(UnknownHostException.class, e ->
+                        Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid domain: " + domain))
+                )
                 .flatMap(ip -> {
                     DnsRecord record = new DnsRecord(domain, ip, ttlSeconds, false);
                     return JsonUtil.safeSerialize(record, objectMapper)
@@ -90,6 +96,7 @@ public class DnsServiceImpl implements DnsService {
     public Mono<DnsRecordResponse> getCachedRecord(String domain) {
         return dnsCacheRepository.get(domain)
                 .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper))
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Record not found")))
                 .map(DnsRecordMapper::toResponse);
     }
 
@@ -121,19 +128,23 @@ public class DnsServiceImpl implements DnsService {
     public Mono<Boolean> updateTTL(String domain, long newTTL) {
         return dnsCacheRepository.get(domain)
                 .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper))
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Record not found for TTL update")))
                 .flatMap(record -> {
                     record.setTtl(newTTL);
                     return JsonUtil.safeSerialize(record, objectMapper)
                             .flatMap(serialized -> dnsCacheRepository.set(domain, serialized, newTTL))
-                            .map(saved -> true);
-                })
-                .defaultIfEmpty(false);
+                            .thenReturn(true);
+                });
     }
+
 
     // --- Delete ---
     @Override
     public Mono<Boolean> deleteCachedRecord(String domain) {
-        return dnsCacheRepository.delete(domain);
+        return dnsCacheRepository.delete(domain)
+                .flatMap(deleted -> deleted
+                        ? Mono.just(true)
+                        : Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "No such domain to delete")));
     }
 
     @Override

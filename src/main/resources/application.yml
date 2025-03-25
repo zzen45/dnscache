@@ -14,7 +14,16 @@ management:
   endpoints:
     web:
       exposure:
-        include: "*"
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
 
 dns:
   ttl: 300
+
+info:
+  app:
+    name: Smart DNS Cache
+    description: In-house reactive DNS caching system
+    version: 1.0.0
