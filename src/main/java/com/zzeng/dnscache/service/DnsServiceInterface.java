@@ -11,6 +11,8 @@ public interface DnsServiceInterface {
 
     Mono<DnsRecord> resolveDomain(String domain, long ttlSeconds);
 
+    Mono<Boolean> exists(String domain);
+
     Flux<DnsRecord> getAllCachedRecords();
 
     Mono<DnsRecord> getCachedRecord(String domain);

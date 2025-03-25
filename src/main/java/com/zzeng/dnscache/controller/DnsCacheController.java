@@ -1,7 +1,6 @@
 package com.zzeng.dnscache.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.zzeng.dnscache.model.DnsManualEntryRequest;
 import com.zzeng.dnscache.model.DnsRecord;
 import com.zzeng.dnscache.service.DnsServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,11 +10,11 @@ import reactor.core.publisher.Flux;
 
 @RestController
 @RequestMapping("/api/dns")
-public class DnsController {
+public class DnsCacheController {
     private final DnsServiceInterface dnsService;
 
     @Autowired
-    public DnsController(DnsServiceInterface dnsService) {
+    public DnsCacheController(DnsServiceInterface dnsService) {
         this.dnsService = dnsService;
     }
 
@@ -29,6 +28,12 @@ public class DnsController {
                                    @RequestParam(required = false, defaultValue = "300") long ttl) {
         return dnsService.resolveDomain(domain, ttl);
     }
+
+    @GetMapping("/cache/exists/{domain}")
+    public Mono<Boolean> exists(@PathVariable String domain) {
+        return dnsService.exists(domain);
+    }
+
 
     // GET /cache/{domain}
     // Returns cached IP for domain (if exists)
@@ -62,7 +67,6 @@ public class DnsController {
     // Manually insert or override a DNS entry
     @PostMapping("/cache")
     public Mono<DnsRecord> addManualEntry(@RequestBody DnsRecord request) throws JsonProcessingException {
-        // Always mark as manual when user calls this endpoint
         request.setManual(true);
         return dnsService.saveManualEntry(request);
     }
