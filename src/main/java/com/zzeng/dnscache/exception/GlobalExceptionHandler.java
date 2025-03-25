@@ -6,12 +6,16 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebInputException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.*;
 
-@ControllerAdvice
+@RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(WebExchangeBindException.class)
     public ResponseEntity<Map<String, Object>> handleValidationException(WebExchangeBindException ex) {
@@ -46,6 +50,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
+        logger.error("Unhandled exception caught by GlobalExceptionHandler", ex);
+
         Map<String, Object> response = new HashMap<>();
         response.put("timestamp", Instant.now());
         response.put("status", 500);

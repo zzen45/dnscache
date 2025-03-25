@@ -70,9 +70,14 @@ public class DnsServiceImpl implements DnsService {
     private Mono<DnsRecord> resolveAndCache(String domain, long ttlSeconds) {
         return Mono.fromCallable(() -> InetAddress.getByName(domain).getHostAddress())
                 .subscribeOn(Schedulers.boundedElastic())
-                .onErrorResume(UnknownHostException.class, e ->
-                        Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid domain: " + domain))
-                )
+                .onErrorResume(throwable -> {
+                    Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
+                    if (cause instanceof UnknownHostException) {
+                        return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid domain: " + domain));
+                    }
+                    logger.error("Unexpected DNS resolution error", throwable);
+                    return Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "DNS lookup failed"));
+                })
                 .flatMap(ip -> {
                     DnsRecord record = new DnsRecord(domain, ip, ttlSeconds, false);
                     return JsonUtil.safeSerialize(record, objectMapper)

@@ -20,7 +20,9 @@ public class DnsCacheRepositoryImpl implements DnsCacheRepository {
 
     @Override
     public Mono<String> get(String domain) {
-        return redisTemplate.opsForValue().get(domain);
+        return redisTemplate.opsForValue()
+                .get(domain)
+                .filter(val -> val != null);
     }
 
     @Override
