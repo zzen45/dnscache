@@ -11,4 +11,13 @@ public class DnsRecordMapper {
                 record.getTtl()
         );
     }
+
+    public static DnsRecord toManualDnsRecord(DnsRecordCreateRequest request) {
+        return new DnsRecord(
+                request.getDomain(),
+                request.getIp(),
+                request.getTtl(),
+                true
+        );
+    }
 }

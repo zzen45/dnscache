@@ -50,6 +50,13 @@ public class DnsServiceImpl implements DnsService {
     }
 
     @Override
+    public Mono<DnsRecordResponse> resolveDomain(String domain, Long optionalTtl) {
+        return (optionalTtl == null)
+                ? resolveDomain(domain)
+                : resolveDomain(domain, optionalTtl);
+    }
+
+    @Override
     public Mono<DnsRecordResponse> resolveDomain(String domain, long ttlSeconds) {
         return dnsCacheRepository.get(domain)
                 .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper))

@@ -27,6 +27,17 @@ public interface DnsService {
     Mono<DnsRecordResponse> resolveDomain(String domain);
 
     /**
+     * Resolves a domain name using either the default TTL or a custom one if provided.
+     * If the domain exists in Redis cache, the cached result is returned.
+     * Otherwise, a DNS lookup is performed and the result is cached with the appropriate TTL.
+     *
+     * @param domain the domain name to resolve
+     * @param optionalTtl the optional TTL to use; if null, the default TTL is applied
+     * @return a Mono emitting the resolved {@link DnsRecordResponse}
+     */
+    Mono<DnsRecordResponse> resolveDomain(String domain, Long optionalTtl);
+
+    /**
      * Resolves a domain name using a custom TTL provided at runtime.
      * If the domain exists in Redis cache, the cached result is returned.
      * Otherwise, a DNS lookup is performed and the result is cached with the specified TTL.

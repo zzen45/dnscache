@@ -2,7 +2,6 @@ package com.zzeng.dnscache.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.zzeng.dnscache.dto.*;
-import com.zzeng.dnscache.model.DnsRecord;
 import com.zzeng.dnscache.service.DnsService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,27 +20,21 @@ public class DnsCacheController {
         this.dnsService = dnsService;
     }
 
+
     // --- Resolution ---
     @GetMapping("/resolve")
     public Mono<DnsRecordResponse> resolveDomain(@RequestParam String domain,
                                                  @RequestParam(required = false) Long ttl) {
-        return (ttl == null)
-                ? dnsService.resolveDomain(domain)
-                : dnsService.resolveDomain(domain, ttl);
+        return dnsService.resolveDomain(domain, ttl);
     }
 
 
     // --- Create ---
     @PostMapping("/cache")
     public Mono<DnsRecordResponse> createManualEntry(@Valid @RequestBody DnsRecordCreateRequest request) throws JsonProcessingException {
-        DnsRecord record = new DnsRecord(
-                request.getDomain(),
-                request.getIp(),
-                request.getTtl(),
-                true
-        );
-        return dnsService.createManualEntry(record);
+        return dnsService.createManualEntry(DnsRecordMapper.toManualDnsRecord(request));
     }
+
 
     // --- Read ---
     @GetMapping("/cache/{domain}")
@@ -64,12 +57,14 @@ public class DnsCacheController {
         return dnsService.getBatch(request.getDomains());
     }
 
+
     // --- Update ---
     @PatchMapping("/cache/{domain}/ttl")
     public Mono<Boolean> updateTTL(@PathVariable String domain,
                                    @Valid @RequestBody TtlUpdateRequest request) {
         return dnsService.updateTTL(domain, request.getTtl());
     }
+
 
     // --- Delete ---
     @DeleteMapping("/cache/{domain}")
