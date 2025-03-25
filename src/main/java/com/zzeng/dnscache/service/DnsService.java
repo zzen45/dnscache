@@ -1,6 +1,7 @@
 package com.zzeng.dnscache.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.zzeng.dnscache.dto.DnsRecordResponse;
 import com.zzeng.dnscache.model.DnsRecord;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -23,7 +24,7 @@ public interface DnsService {
      * @param domain the domain name to resolve (e.g., "example.com")
      * @return a Mono emitting the resolved {@link DnsRecord}
      */
-    Mono<DnsRecord> resolveDomain(String domain);
+    Mono<DnsRecordResponse> resolveDomain(String domain);
 
     /**
      * Resolves a domain name using a custom TTL provided at runtime.
@@ -34,7 +35,7 @@ public interface DnsService {
      * @param ttlSeconds time-to-live in seconds for the cached result
      * @return a Mono emitting the resolved {@link DnsRecord}
      */
-    Mono<DnsRecord> resolveDomain(String domain, long ttlSeconds);
+    Mono<DnsRecordResponse> resolveDomain(String domain, long ttlSeconds);
 
     // --- Create ---
     /**
@@ -45,7 +46,7 @@ public interface DnsService {
      * @return a Mono emitting the saved {@link DnsRecord}
      * @throws JsonProcessingException if serialization to JSON fails
      */
-    Mono<DnsRecord> createManualEntry(DnsRecord record) throws JsonProcessingException;
+    Mono<DnsRecordResponse> createManualEntry(DnsRecord record) throws JsonProcessingException;
 
     // --- Read ---
     /**
@@ -54,14 +55,14 @@ public interface DnsService {
      * @param domain the domain name to retrieve
      * @return a Mono emitting the {@link DnsRecord}, or empty if not found
      */
-    Mono<DnsRecord> getCachedRecord(String domain);
+    Mono<DnsRecordResponse> getCachedRecord(String domain);
 
     /**
      * Retrieves all cached DNS records from Redis.
      *
      * @return a Flux stream of {@link DnsRecord} objects
      */
-    Flux<DnsRecord> getAllCachedRecords();
+    Flux<DnsRecordResponse> getAllCachedRecords();
 
     /**
      * Checks whether a domain exists in the Redis cache.
@@ -78,7 +79,7 @@ public interface DnsService {
      * @param domains list of domain names to retrieve
      * @return a Flux stream of found {@link DnsRecord} entries
      */
-    Flux<DnsRecord> getBatch(List<String> domains); // for batch reads
+    Flux<DnsRecordResponse> getBatch(List<String> domains); // for batch reads
 
     // --- Update ---
     /**

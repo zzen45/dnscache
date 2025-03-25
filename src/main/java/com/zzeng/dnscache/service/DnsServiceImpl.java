@@ -3,6 +3,8 @@ package com.zzeng.dnscache.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zzeng.dnscache.config.DnsProperties;
+import com.zzeng.dnscache.dto.DnsRecordMapper;
+import com.zzeng.dnscache.dto.DnsRecordResponse;
 import com.zzeng.dnscache.model.DnsRecord;
 import com.zzeng.dnscache.repository.DnsCacheRepository;
 import com.zzeng.dnscache.util.JsonUtil;
@@ -43,15 +45,16 @@ public class DnsServiceImpl implements DnsService {
 
     // --- Resolution ---
     @Override
-    public Mono<DnsRecord> resolveDomain(String domain) {
+    public Mono<DnsRecordResponse> resolveDomain(String domain) {
         return resolveDomain(domain, defaultTtl);
     }
 
     @Override
-    public Mono<DnsRecord> resolveDomain(String domain, long ttlSeconds) {
+    public Mono<DnsRecordResponse> resolveDomain(String domain, long ttlSeconds) {
         return dnsCacheRepository.get(domain)
                 .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper))
-                .switchIfEmpty(Mono.defer(() -> resolveAndCache(domain, ttlSeconds)));
+                .switchIfEmpty(Mono.defer(() -> resolveAndCache(domain, ttlSeconds)))
+                .map(DnsRecordMapper::toResponse);
     }
 
     private Mono<DnsRecord> resolveAndCache(String domain, long ttlSeconds) {
@@ -67,25 +70,28 @@ public class DnsServiceImpl implements DnsService {
 
     // --- Create ---
     @Override
-    public Mono<DnsRecord> createManualEntry(DnsRecord record) throws JsonProcessingException {
+    public Mono<DnsRecordResponse> createManualEntry(DnsRecord record) throws JsonProcessingException {
         record.setManual(true);
         return JsonUtil.safeSerialize(record, objectMapper)
                 .flatMap(json -> dnsCacheRepository.set(record.getDomain(), json, record.getTtl())
-                        .thenReturn(record));
+                        .thenReturn(record))
+                .map(DnsRecordMapper::toResponse);
     }
 
     // --- Read ---
     @Override
-    public Mono<DnsRecord> getCachedRecord(String domain) {
+    public Mono<DnsRecordResponse> getCachedRecord(String domain) {
         return dnsCacheRepository.get(domain)
-                .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper));
+                .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper))
+                .map(DnsRecordMapper::toResponse);
     }
 
     @Override
-    public Flux<DnsRecord> getAllCachedRecords() {
+    public Flux<DnsRecordResponse> getAllCachedRecords() {
         return dnsCacheRepository.scanKeys()
                 .flatMap(key -> dnsCacheRepository.get(key)
-                        .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper)));
+                        .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper)))
+                .map(DnsRecordMapper::toResponse);
     }
 
     @Override
@@ -96,10 +102,11 @@ public class DnsServiceImpl implements DnsService {
     }
 
     @Override
-    public Flux<DnsRecord> getBatch(List<String> domains) {
+    public Flux<DnsRecordResponse> getBatch(List<String> domains) {
         return Flux.fromIterable(domains)
                 .flatMap(domain -> dnsCacheRepository.get(domain)
-                        .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper)));
+                        .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper)))
+                .map(DnsRecordMapper::toResponse);
     }
 
     // --- Update ---

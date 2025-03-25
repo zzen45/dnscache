@@ -26,8 +26,8 @@ public class DnsCacheController {
     public Mono<DnsRecordResponse> resolveDomain(@RequestParam String domain,
                                                  @RequestParam(required = false) Long ttl) {
         return (ttl == null)
-                ? dnsService.resolveDomain(domain).map(DnsRecordMapper::toResponse)
-                : dnsService.resolveDomain(domain, ttl).map(DnsRecordMapper::toResponse);
+                ? dnsService.resolveDomain(domain)
+                : dnsService.resolveDomain(domain, ttl);
     }
 
 
@@ -40,21 +40,18 @@ public class DnsCacheController {
                 request.getTtl(),
                 true
         );
-        return dnsService.createManualEntry(record)
-                .map(DnsRecordMapper::toResponse);
+        return dnsService.createManualEntry(record);
     }
 
     // --- Read ---
     @GetMapping("/cache/{domain}")
     public Mono<DnsRecordResponse> getCachedRecord(@PathVariable String domain) {
-        return dnsService.getCachedRecord(domain)
-                .map(DnsRecordMapper::toResponse);
+        return dnsService.getCachedRecord(domain);
     }
 
     @GetMapping("/cache")
     public Flux<DnsRecordResponse> getAllCachedRecords() {
-        return dnsService.getAllCachedRecords()
-                .map(DnsRecordMapper::toResponse);
+        return dnsService.getAllCachedRecords();
     }
 
     @GetMapping("/cache/exists/{domain}")
@@ -64,8 +61,7 @@ public class DnsCacheController {
 
     @PostMapping("/cache/batch")
     public Flux<DnsRecordResponse> getBatchRecords(@Valid @RequestBody DnsBatchRequest request) {
-        return dnsService.getBatch(request.getDomains())
-                .map(DnsRecordMapper::toResponse);
+        return dnsService.getBatch(request.getDomains());
     }
 
     // --- Update ---
