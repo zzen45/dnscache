@@ -36,7 +36,7 @@ public class DnsCacheController {
         }
     }
 
-    // --- Cache Create ---
+    // --- Create ---
     @PostMapping("/cache")
     public Mono<DnsRecord> createManualEntry(@Valid @RequestBody DnsRecordCreateRequest request) throws JsonProcessingException {
         DnsRecord record = new DnsRecord(
@@ -48,7 +48,7 @@ public class DnsCacheController {
         return dnsService.createManualEntry(record);
     }
 
-    // --- Cache Read ---
+    // --- Read ---
     @GetMapping("/cache/{domain}")
     public Mono<DnsRecord> getCachedRecord(@PathVariable String domain) {
         return dnsService.getCachedRecord(domain);
@@ -69,14 +69,14 @@ public class DnsCacheController {
         return dnsService.getBatch(request.getDomains());
     }
 
-    // --- Cache Update ---
+    // --- Update ---
     @PatchMapping("/cache/{domain}/ttl")
     public Mono<Boolean> updateTTL(@PathVariable String domain,
                                    @Valid @RequestBody TtlUpdateRequest request) {
         return dnsService.updateTTL(domain, request.getTtl());
     }
 
-    // --- Cache Delete ---
+    // --- Delete ---
     @DeleteMapping("/cache/{domain}")
     public Mono<Boolean> deleteCachedRecord(@PathVariable String domain) {
         return dnsService.deleteCachedRecord(domain);
@@ -93,7 +93,7 @@ public class DnsCacheController {
     }
 
     @DeleteMapping("/cache/batch")
-    public Mono<String> deleteBatch(@RequestBody List<String> domains) {
-        return dnsService.deleteBatch(domains);
+    public Mono<String> deleteBatch(@Valid @RequestBody DnsBatchRequest request) {
+        return dnsService.deleteBatch(request.getDomains());
     }
 }
