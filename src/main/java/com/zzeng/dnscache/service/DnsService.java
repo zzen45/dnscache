@@ -1,5 +1,6 @@
 package com.zzeng.dnscache.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zzeng.dnscache.config.DnsProperties;
 import com.zzeng.dnscache.model.DnsRecord;
@@ -7,29 +8,32 @@ import com.zzeng.dnscache.repository.DnsCacheRepository;
 import com.zzeng.dnscache.util.JsonUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-import reactor.core.publisher.Flux;
 
 import java.net.InetAddress;
+import java.util.List;
 
 @Service
 public class DnsService implements DnsServiceInterface {
 
-    // Dependencies
     private final DnsCacheRepository dnsCacheRepository;
     private final ObjectMapper objectMapper;
     private final long defaultTtl;
 
     @Autowired
-    public DnsService(DnsCacheRepository dnsCacheRepository, ObjectMapper objectMapper, DnsProperties dnsProperties) {
+    public DnsService(DnsCacheRepository dnsCacheRepository,
+                      ObjectMapper objectMapper,
+                      DnsProperties dnsProperties) {
         this.dnsCacheRepository = dnsCacheRepository;
         this.objectMapper = objectMapper;
         this.defaultTtl = dnsProperties.getTtl();
     }
 
-
+    // ---------------------------
     // Resolution
+    // ---------------------------
     @Override
     public Mono<DnsRecord> resolveDomain(String domain) {
         return resolveDomain(domain, defaultTtl);
@@ -37,12 +41,14 @@ public class DnsService implements DnsServiceInterface {
 
     @Override
     public Mono<DnsRecord> resolveDomain(String domain, long ttlSeconds) {
+        // Check if exists in cache
         return dnsCacheRepository.get(domain)
                 .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper))
                 .switchIfEmpty(Mono.defer(() -> resolveAndCache(domain, ttlSeconds)));
     }
 
     private Mono<DnsRecord> resolveAndCache(String domain, long ttlSeconds) {
+        // Actually do the DNS lookup & store
         return Mono.fromCallable(() -> InetAddress.getByName(domain).getHostAddress())
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(ip -> {
@@ -53,8 +59,26 @@ public class DnsService implements DnsServiceInterface {
                 });
     }
 
+    // ---------------------------
+    // Cache Create
+    // ---------------------------
+    @Override
+    public Mono<DnsRecord> saveManualEntry(DnsRecord record) throws JsonProcessingException {
+        record.setManual(true);
+        return JsonUtil.safeSerialize(record, objectMapper)
+                .flatMap(json -> dnsCacheRepository.set(record.getDomain(), json, record.getTtl())
+                        .thenReturn(record));
+    }
 
-    // Cache Reads
+    // ---------------------------
+    // Cache Read
+    // ---------------------------
+    @Override
+    public Mono<DnsRecord> getCachedRecord(String domain) {
+        return dnsCacheRepository.get(domain)
+                .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper));
+    }
+
     @Override
     public Flux<DnsRecord> getAllCachedRecords() {
         return dnsCacheRepository.scanKeys()
@@ -63,30 +87,38 @@ public class DnsService implements DnsServiceInterface {
     }
 
     @Override
-    public Mono<DnsRecord> getCachedRecord(String domain) {
-        return dnsCacheRepository.get(domain)
-                .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper));
-    }
-
-    @Override
     public Mono<Boolean> exists(String domain) {
         return dnsCacheRepository.get(domain)
-                .map(record -> true)
+                .map(val -> true)
                 .defaultIfEmpty(false);
     }
 
-
-    // Cache Writes
     @Override
-    public Mono<DnsRecord> saveManualEntry(DnsRecord record) {
-        record.setManual(true);
-        return JsonUtil.safeSerialize(record, objectMapper)
-                .flatMap(json -> dnsCacheRepository.set(record.getDomain(), json, record.getTtl())
-                        .thenReturn(record));
+    public Flux<DnsRecord> getBatch(List<String> domains) {
+        return Flux.fromIterable(domains)
+                .flatMap(domain -> dnsCacheRepository.get(domain)
+                        .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper)));
     }
 
+    // ---------------------------
+    // Cache Update
+    // ---------------------------
+    @Override
+    public Mono<Boolean> updateTTL(String domain, long newTTL) {
+        return dnsCacheRepository.get(domain)
+                .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper))
+                .flatMap(record -> {
+                    record.setTtl(newTTL);
+                    return JsonUtil.safeSerialize(record, objectMapper)
+                            .flatMap(serialized -> dnsCacheRepository.set(domain, serialized, newTTL))
+                            .map(saved -> true);
+                })
+                .defaultIfEmpty(false); // domain not found
+    }
 
-    // Cache Deletes
+    // ---------------------------
+    // Cache Delete
+    // ---------------------------
     @Override
     public Mono<Boolean> deleteCachedRecord(String domain) {
         return dnsCacheRepository.delete(domain);
@@ -99,4 +131,31 @@ public class DnsService implements DnsServiceInterface {
                 .then(Mono.just("Cache cleared"));
     }
 
+    @Override
+    public Mono<String> deleteManualEntries() {
+        return dnsCacheRepository.scanKeys()
+                .flatMap(key -> dnsCacheRepository.get(key)
+                        .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper))
+                        .flatMap(record -> {
+                            if (record.isManual()) {
+                                return dnsCacheRepository.delete(key)
+                                        .filter(Boolean::booleanValue)
+                                        .map(deleted -> 1L);
+                            } else {
+                                return Mono.just(0L);
+                            }
+                        })
+                )
+                .reduce(0L, Long::sum)
+                .map(count -> "Deleted " + count + " manual entries.");
+    }
+
+    @Override
+    public Mono<String> deleteBatch(List<String> domains) {
+        return Flux.fromIterable(domains)
+                .flatMap(dnsCacheRepository::delete)
+                .filter(Boolean::booleanValue)
+                .count()
+                .map(deletedCount -> "Deleted " + deletedCount + " entries.");
+    }
 }

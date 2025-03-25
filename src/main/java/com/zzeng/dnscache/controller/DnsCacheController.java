@@ -5,12 +5,15 @@ import com.zzeng.dnscache.model.DnsRecord;
 import com.zzeng.dnscache.service.DnsServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import reactor.core.publisher.Mono;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/dns")
 public class DnsCacheController {
+
     private final DnsServiceInterface dnsService;
 
     @Autowired
@@ -18,58 +21,90 @@ public class DnsCacheController {
         this.dnsService = dnsService;
     }
 
-    // Test using -> http://localhost:8080/api/dns
-    // {domain} = example.com
-
-    // GET /resolve?domain=example.com
-    // Returns IP address (from cache or resolved)
+    // ---------------------------
+    // DNS Resolution
+    // ---------------------------
+    // GET /resolve?domain=example.com[&ttl=150]
     @GetMapping("/resolve")
-    public Mono<DnsRecord> resolve(@RequestParam String domain,
-                                   @RequestParam(required = false, defaultValue = "300") long ttl) {
-        return dnsService.resolveDomain(domain, ttl);
+    public Mono<DnsRecord> resolveDomain(@RequestParam String domain,
+                                         @RequestParam(required = false) Long ttl) {
+        if (ttl == null) {
+            return dnsService.resolveDomain(domain);
+        } else {
+            return dnsService.resolveDomain(domain, ttl);
+        }
     }
 
+    // ---------------------------
+    // Cache Create
+    // ---------------------------
+    // POST /cache
+    @PostMapping("/cache")
+    public Mono<DnsRecord> saveManualEntry(@RequestBody DnsRecord record) throws JsonProcessingException {
+        return dnsService.saveManualEntry(record);
+    }
+
+    // ---------------------------
+    // Cache Read
+    // ---------------------------
+    // GET /cache/{domain}
+    @GetMapping("/cache/{domain}")
+    public Mono<DnsRecord> getCachedRecord(@PathVariable String domain) {
+        return dnsService.getCachedRecord(domain);
+    }
+
+    // GET /cache
+    @GetMapping("/cache")
+    public Flux<DnsRecord> getAllCachedRecords() {
+        return dnsService.getAllCachedRecords();
+    }
+
+    // GET /cache/exists/{domain}
     @GetMapping("/cache/exists/{domain}")
     public Mono<Boolean> exists(@PathVariable String domain) {
         return dnsService.exists(domain);
     }
 
-
-    // GET /cache/{domain}
-    // Returns cached IP for domain (if exists)
-    @GetMapping("/cache/{domain}")
-    public Mono<DnsRecord> getCached(@PathVariable String domain) {
-        return dnsService.getCachedRecord(domain);
+    // POST /cache/batch
+    @PostMapping("/cache/batch")
+    public Flux<DnsRecord> getBatchRecords(@RequestBody List<String> domains) {
+        return dnsService.getBatch(domains);
     }
 
-    // GET /cache
-    // Returns all cached domain-IP pairs
-    @GetMapping("/cache")
-    public Flux<DnsRecord> getAllCached() {
-        return dnsService.getAllCachedRecords();
+    // ---------------------------
+    // Cache Update
+    // ---------------------------
+    // PATCH /cache/{domain}/ttl?ttl=600
+    @PatchMapping("/cache/{domain}/ttl")
+    public Mono<Boolean> updateTTL(@PathVariable String domain,
+                                   @RequestParam long ttl) {
+        return dnsService.updateTTL(domain, ttl);
     }
 
+    // ---------------------------
+    // Cache Delete
+    // ---------------------------
     // DELETE /cache/{domain}
-    // Deletes a specific cached domain
     @DeleteMapping("/cache/{domain}")
-    public Mono<Boolean> deleteCached(@PathVariable String domain) {
+    public Mono<Boolean> deleteCachedRecord(@PathVariable String domain) {
         return dnsService.deleteCachedRecord(domain);
     }
 
     // DELETE /cache
-    // Clears entire cache
     @DeleteMapping("/cache")
     public Mono<String> clearCache() {
         return dnsService.clearCache();
     }
 
-    // POST /cache
-    // Manually insert or override a DNS entry
-    @PostMapping("/cache")
-    public Mono<DnsRecord> addManualEntry(@RequestBody DnsRecord request) throws JsonProcessingException {
-        request.setManual(true);
-        return dnsService.saveManualEntry(request);
+    // DELETE /cache/manual
+    @DeleteMapping("/cache/manual")
+    public Mono<String> deleteManualEntries() {
+        return dnsService.deleteManualEntries();
     }
 
+    // DELETE /cache/batch
+    @DeleteMapping("/cache/batch")
+    public Mono<String> deleteBatch(@RequestBody List<String> domains) {
+        return dnsService.deleteBatch(domains);
+    }
 }
-
