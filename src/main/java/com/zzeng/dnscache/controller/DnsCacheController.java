@@ -2,7 +2,7 @@ package com.zzeng.dnscache.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.zzeng.dnscache.model.DnsRecord;
-import com.zzeng.dnscache.service.DnsServiceInterface;
+import com.zzeng.dnscache.service.DnsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
@@ -14,10 +14,10 @@ import java.util.List;
 @RequestMapping("/api/dns")
 public class DnsCacheController {
 
-    private final DnsServiceInterface dnsService;
+    private final DnsService dnsService;
 
     @Autowired
-    public DnsCacheController(DnsServiceInterface dnsService) {
+    public DnsCacheController(DnsService dnsService) {
         this.dnsService = dnsService;
     }
 

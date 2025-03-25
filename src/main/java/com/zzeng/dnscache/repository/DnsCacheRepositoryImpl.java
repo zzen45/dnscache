@@ -9,12 +9,12 @@ import reactor.core.publisher.Flux;
 import java.time.Duration;
 
 @Repository
-public class RedisDnsCacheRepository implements DnsCacheRepository {
+public class DnsCacheRepositoryImpl implements DnsCacheRepository {
 
     private final ReactiveStringRedisTemplate redisTemplate;
 
     @Autowired
-    public RedisDnsCacheRepository(ReactiveStringRedisTemplate redisTemplate) {
+    public DnsCacheRepositoryImpl(ReactiveStringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
 

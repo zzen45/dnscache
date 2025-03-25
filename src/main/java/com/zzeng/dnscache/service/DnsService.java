@@ -1,151 +1,124 @@
 package com.zzeng.dnscache.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.zzeng.dnscache.config.DnsProperties;
 import com.zzeng.dnscache.model.DnsRecord;
-import com.zzeng.dnscache.repository.DnsCacheRepository;
-import com.zzeng.dnscache.util.JsonUtil;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
-import java.net.InetAddress;
 import java.util.List;
 
-@Service
-public class DnsService implements DnsServiceInterface {
-
-    private final DnsCacheRepository dnsCacheRepository;
-    private final ObjectMapper objectMapper;
-    private final long defaultTtl;
-
-    @Autowired
-    public DnsService(DnsCacheRepository dnsCacheRepository,
-                      ObjectMapper objectMapper,
-                      DnsProperties dnsProperties) {
-        this.dnsCacheRepository = dnsCacheRepository;
-        this.objectMapper = objectMapper;
-        this.defaultTtl = dnsProperties.getTtl();
-    }
+/**
+ * Service interface for DNS resolution and smart caching functionality.
+ * Provides operations to resolve, create, read, update, and delete DNS records,
+ * with support for manual overrides, TTL management, and batch processing.
+ */
+public interface DnsService {
 
     // --- Resolution ---
-    @Override
-    public Mono<DnsRecord> resolveDomain(String domain) {
-        return resolveDomain(domain, defaultTtl);
-    }
+    /**
+     * Resolves a domain name using the default TTL configured in the application.
+     * If the domain exists in Redis cache, the cached result is returned.
+     * Otherwise, a DNS lookup is performed and the result is cached.
+     *
+     * @param domain the domain name to resolve (e.g., "example.com")
+     * @return a Mono emitting the resolved {@link DnsRecord}
+     */
+    Mono<DnsRecord> resolveDomain(String domain);
 
-    @Override
-    public Mono<DnsRecord> resolveDomain(String domain, long ttlSeconds) {
-        // Check if exists in cache
-        return dnsCacheRepository.get(domain)
-                .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper))
-                .switchIfEmpty(Mono.defer(() -> resolveAndCache(domain, ttlSeconds)));
-    }
-
-    private Mono<DnsRecord> resolveAndCache(String domain, long ttlSeconds) {
-        // Actually do the DNS lookup & store
-        return Mono.fromCallable(() -> InetAddress.getByName(domain).getHostAddress())
-                .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(ip -> {
-                    DnsRecord record = new DnsRecord(domain, ip, ttlSeconds, false);
-                    return JsonUtil.safeSerialize(record, objectMapper)
-                            .flatMap(json -> dnsCacheRepository.set(domain, json, ttlSeconds)
-                                    .thenReturn(record));
-                });
-    }
+    /**
+     * Resolves a domain name using a custom TTL provided at runtime.
+     * If the domain exists in Redis cache, the cached result is returned.
+     * Otherwise, a DNS lookup is performed and the result is cached with the specified TTL.
+     *
+     * @param domain the domain name to resolve
+     * @param ttlSeconds time-to-live in seconds for the cached result
+     * @return a Mono emitting the resolved {@link DnsRecord}
+     */
+    Mono<DnsRecord> resolveDomain(String domain, long ttlSeconds);
 
     // --- Cache Create ---
-    @Override
-    public Mono<DnsRecord> createManualEntry(DnsRecord record) throws JsonProcessingException {
-        record.setManual(true);
-        return JsonUtil.safeSerialize(record, objectMapper)
-                .flatMap(json -> dnsCacheRepository.set(record.getDomain(), json, record.getTtl())
-                        .thenReturn(record));
-    }
+    /**
+     * Manually inserts or overrides a DNS record in the Redis cache.
+     * Marks the record as "manual" and uses the TTL provided in the request.
+     *
+     * @param record the {@link DnsRecord} to store
+     * @return a Mono emitting the saved {@link DnsRecord}
+     * @throws JsonProcessingException if serialization to JSON fails
+     */
+    Mono<DnsRecord> createManualEntry(DnsRecord record) throws JsonProcessingException;
 
     // --- Cache Read ---
-    @Override
-    public Mono<DnsRecord> getCachedRecord(String domain) {
-        return dnsCacheRepository.get(domain)
-                .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper));
-    }
+    /**
+     * Retrieves a cached DNS record for a specific domain.
+     *
+     * @param domain the domain name to retrieve
+     * @return a Mono emitting the {@link DnsRecord}, or empty if not found
+     */
+    Mono<DnsRecord> getCachedRecord(String domain);
 
-    @Override
-    public Flux<DnsRecord> getAllCachedRecords() {
-        return dnsCacheRepository.scanKeys()
-                .flatMap(key -> dnsCacheRepository.get(key)
-                        .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper)));
-    }
+    /**
+     * Retrieves all cached DNS records from Redis.
+     *
+     * @return a Flux stream of {@link DnsRecord} objects
+     */
+    Flux<DnsRecord> getAllCachedRecords();
 
-    @Override
-    public Mono<Boolean> exists(String domain) {
-        return dnsCacheRepository.get(domain)
-                .map(val -> true)
-                .defaultIfEmpty(false);
-    }
+    /**
+     * Checks whether a domain exists in the Redis cache.
+     *
+     * @param domain the domain name to check
+     * @return a Mono emitting true if the domain exists in cache, false otherwise
+     */
+    Mono<Boolean> exists(String domain);
 
-    @Override
-    public Flux<DnsRecord> getBatch(List<String> domains) {
-        return Flux.fromIterable(domains)
-                .flatMap(domain -> dnsCacheRepository.get(domain)
-                        .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper)));
-    }
+    /**
+     * Performs a batch read of multiple domain names.
+     * Returns only records that are currently in the Redis cache.
+     *
+     * @param domains list of domain names to retrieve
+     * @return a Flux stream of found {@link DnsRecord} entries
+     */
+    Flux<DnsRecord> getBatch(List<String> domains); // for batch reads
 
     // --- Cache Update ---
-    @Override
-    public Mono<Boolean> updateTTL(String domain, long newTTL) {
-        return dnsCacheRepository.get(domain)
-                .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper))
-                .flatMap(record -> {
-                    record.setTtl(newTTL);
-                    return JsonUtil.safeSerialize(record, objectMapper)
-                            .flatMap(serialized -> dnsCacheRepository.set(domain, serialized, newTTL))
-                            .map(saved -> true);
-                })
-                .defaultIfEmpty(false); // domain not found
-    }
+    /**
+     * Updates the TTL (time-to-live) for an existing DNS record in the cache.
+     *
+     * @param domain the domain whose TTL should be updated
+     * @param newTTL the new TTL value in seconds
+     * @return a Mono emitting true if the update was successful, false if the record was not found
+     */
+    Mono<Boolean> updateTTL(String domain, long newTTL);
 
     // --- Cache Delete ---
-    @Override
-    public Mono<Boolean> deleteCachedRecord(String domain) {
-        return dnsCacheRepository.delete(domain);
-    }
+    /**
+     * Deletes a specific domain from the Redis cache.
+     *
+     * @param domain the domain name to delete
+     * @return a Mono emitting true if deletion succeeded, false if not found
+     */
+    Mono<Boolean> deleteCachedRecord(String domain);
 
-    @Override
-    public Mono<String> clearCache() {
-        return dnsCacheRepository.scanKeys()
-                .flatMap(dnsCacheRepository::delete)
-                .then(Mono.just("Cache cleared"));
-    }
+    /**
+     * Clears all cached DNS entries from Redis.
+     *
+     * @return a Mono emitting a status message
+     */
+    Mono<String> clearCache();
 
-    @Override
-    public Mono<String> deleteAllManualEntries() {
-        return dnsCacheRepository.scanKeys()
-                .flatMap(key -> dnsCacheRepository.get(key)
-                        .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper))
-                        .flatMap(record -> {
-                            if (record.isManual()) {
-                                return dnsCacheRepository.delete(key)
-                                        .filter(Boolean::booleanValue)
-                                        .map(deleted -> 1L);
-                            } else {
-                                return Mono.just(0L);
-                            }
-                        })
-                )
-                .reduce(0L, Long::sum)
-                .map(count -> "Deleted " + count + " manual entries.");
-    }
+    /**
+     * Deletes all DNS entries that were manually created (isManual = true).
+     * This does not affect automatically resolved entries.
+     *
+     * @return a Mono emitting a summary of how many entries were deleted
+     */
+    Mono<String> deleteAllManualEntries();
 
-    @Override
-    public Mono<String> deleteBatch(List<String> domains) {
-        return Flux.fromIterable(domains)
-                .flatMap(dnsCacheRepository::delete)
-                .filter(Boolean::booleanValue)
-                .count()
-                .map(deletedCount -> "Deleted " + deletedCount + " entries.");
-    }
+    /**
+     * Deletes a batch of specific domains from the Redis cache.
+     *
+     * @param domains list of domain names to delete
+     * @return a Mono emitting a summary of how many entries were deleted
+     */
+    Mono<String> deleteBatch(List<String> domains);
 }
