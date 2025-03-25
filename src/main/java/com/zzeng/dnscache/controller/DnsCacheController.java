@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.zzeng.dnscache.model.DnsRecord;
 import com.zzeng.dnscache.service.DnsService;
 import com.zzeng.dnscache.dto.DnsRecordCreateRequest;
+import com.zzeng.dnscache.dto.TtlUpdateRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -70,8 +71,8 @@ public class DnsCacheController {
     // --- Cache Update ---
     @PatchMapping("/cache/{domain}/ttl")
     public Mono<Boolean> updateTTL(@PathVariable String domain,
-                                   @RequestParam long ttl) {
-        return dnsService.updateTTL(domain, ttl);
+                                   @Valid @RequestBody TtlUpdateRequest request) {
+        return dnsService.updateTTL(domain, request.getTtl());
     }
 
     // --- Cache Delete ---
