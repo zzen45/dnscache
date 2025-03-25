@@ -14,7 +14,6 @@ public class DnsRecordCreateRequest {
     @Min(value = 1, message = "TTL must be at least 1 second")
     private long ttl;
 
-    // Getters and setters
     public String getDomain() {
         return domain;
     }

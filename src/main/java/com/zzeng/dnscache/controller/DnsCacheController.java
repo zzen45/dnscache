@@ -5,6 +5,7 @@ import com.zzeng.dnscache.model.DnsRecord;
 import com.zzeng.dnscache.service.DnsService;
 import com.zzeng.dnscache.dto.DnsRecordCreateRequest;
 import com.zzeng.dnscache.dto.TtlUpdateRequest;
+import com.zzeng.dnscache.dto.DnsBatchRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -64,8 +65,8 @@ public class DnsCacheController {
     }
 
     @PostMapping("/cache/batch")
-    public Flux<DnsRecord> getBatchRecords(@RequestBody List<String> domains) {
-        return dnsService.getBatch(domains);
+    public Flux<DnsRecord> getBatchRecords(@Valid @RequestBody DnsBatchRequest request) {
+        return dnsService.getBatch(request.getDomains());
     }
 
     // --- Cache Update ---

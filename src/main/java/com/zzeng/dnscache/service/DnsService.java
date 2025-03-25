@@ -36,7 +36,7 @@ public interface DnsService {
      */
     Mono<DnsRecord> resolveDomain(String domain, long ttlSeconds);
 
-    // --- Cache Create ---
+    // --- Create ---
     /**
      * Manually inserts or overrides a DNS record in the Redis cache.
      * Marks the record as "manual" and uses the TTL provided in the request.
@@ -47,7 +47,7 @@ public interface DnsService {
      */
     Mono<DnsRecord> createManualEntry(DnsRecord record) throws JsonProcessingException;
 
-    // --- Cache Read ---
+    // --- Read ---
     /**
      * Retrieves a cached DNS record for a specific domain.
      *
@@ -80,7 +80,7 @@ public interface DnsService {
      */
     Flux<DnsRecord> getBatch(List<String> domains); // for batch reads
 
-    // --- Cache Update ---
+    // --- Update ---
     /**
      * Updates the TTL (time-to-live) for an existing DNS record in the cache.
      *
@@ -90,7 +90,7 @@ public interface DnsService {
      */
     Mono<Boolean> updateTTL(String domain, long newTTL);
 
-    // --- Cache Delete ---
+    // --- Delete ---
     /**
      * Deletes a specific domain from the Redis cache.
      *

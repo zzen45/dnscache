@@ -65,7 +65,7 @@ public class DnsServiceImpl implements DnsService {
                 });
     }
 
-    // --- Cache Create ---
+    // --- Create ---
     @Override
     public Mono<DnsRecord> createManualEntry(DnsRecord record) throws JsonProcessingException {
         record.setManual(true);
@@ -74,7 +74,7 @@ public class DnsServiceImpl implements DnsService {
                         .thenReturn(record));
     }
 
-    // --- Cache Read ---
+    // --- Read ---
     @Override
     public Mono<DnsRecord> getCachedRecord(String domain) {
         return dnsCacheRepository.get(domain)
@@ -102,7 +102,7 @@ public class DnsServiceImpl implements DnsService {
                         .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper)));
     }
 
-    // --- Cache Update ---
+    // --- Update ---
     @Override
     public Mono<Boolean> updateTTL(String domain, long newTTL) {
         return dnsCacheRepository.get(domain)
@@ -116,7 +116,7 @@ public class DnsServiceImpl implements DnsService {
                 .defaultIfEmpty(false);
     }
 
-    // --- Cache Delete ---
+    // --- Delete ---
     @Override
     public Mono<Boolean> deleteCachedRecord(String domain) {
         return dnsCacheRepository.delete(domain);
