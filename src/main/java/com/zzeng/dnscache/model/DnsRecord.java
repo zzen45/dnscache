@@ -1,17 +1,11 @@
 package com.zzeng.dnscache.model;
 
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-
 public class DnsRecord {
 
-    @NotBlank(message = "Domain must not be blank")
     private String domain;
 
-    @NotBlank(message = "IP address must not be blank")
     private String ip;
 
-    @Min(value = 1, message = "TTL must be at least 1 second")
     private long ttl;
 
     private boolean isManual;

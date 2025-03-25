@@ -10,8 +10,6 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/dns")
 public class DnsCacheController {
@@ -25,14 +23,13 @@ public class DnsCacheController {
 
     // --- Resolution ---
     @GetMapping("/resolve")
-    public Mono<DnsRecord> resolveDomain(@RequestParam String domain,
-                                         @RequestParam(required = false) Long ttl) {
-        if (ttl == null) {
-            return dnsService.resolveDomain(domain);
-        } else {
-            return dnsService.resolveDomain(domain, ttl);
-        }
+    public Mono<DnsRecordResponse> resolveDomain(@RequestParam String domain,
+                                                 @RequestParam(required = false) Long ttl) {
+        return (ttl == null)
+                ? dnsService.resolveDomain(domain).map(DnsRecordMapper::toResponse)
+                : dnsService.resolveDomain(domain, ttl).map(DnsRecordMapper::toResponse);
     }
+
 
     // --- Create ---
     @PostMapping("/cache")
@@ -66,8 +63,9 @@ public class DnsCacheController {
     }
 
     @PostMapping("/cache/batch")
-    public Flux<DnsRecord> getBatchRecords(@Valid @RequestBody DnsBatchRequest request) {
-        return dnsService.getBatch(request.getDomains());
+    public Flux<DnsRecordResponse> getBatchRecords(@Valid @RequestBody DnsBatchRequest request) {
+        return dnsService.getBatch(request.getDomains())
+                .map(DnsRecordMapper::toResponse);
     }
 
     // --- Update ---
