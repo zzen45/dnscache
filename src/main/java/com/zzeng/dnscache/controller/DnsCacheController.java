@@ -3,6 +3,7 @@ package com.zzeng.dnscache.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.zzeng.dnscache.model.DnsRecord;
 import com.zzeng.dnscache.service.DnsService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
@@ -36,7 +37,7 @@ public class DnsCacheController {
     // --- Cache Create ---
     // POST /cache
     @PostMapping("/cache")
-    public Mono<DnsRecord> createManualEntry(@RequestBody DnsRecord record) throws JsonProcessingException {
+    public Mono<DnsRecord> createManualEntry(@Valid @RequestBody DnsRecord record) throws JsonProcessingException {
         return dnsService.createManualEntry(record);
     }
 
