@@ -18,11 +18,23 @@ public class DnsRecordResponse {
         return domain;
     }
 
+    public void setDomain(String domain) {
+        this.domain = domain;
+    }
+
     public String getIp() {
         return ip;
     }
 
+    public void setIp(String ip) {
+        this.ip = ip;
+    }
+
     public long getTtl() {
         return ttl;
+    }
+
+    public void setTtl(long ttl) {
+        this.ttl = ttl;
     }
 }
