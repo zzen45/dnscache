@@ -7,6 +7,7 @@ import com.zzeng.dnscache.dto.DnsRecordMapper;
 import com.zzeng.dnscache.dto.DnsRecordResponse;
 import com.zzeng.dnscache.model.DnsRecord;
 import com.zzeng.dnscache.repository.DnsCacheRepository;
+import com.zzeng.dnscache.util.DnsFallbackResolver;
 import com.zzeng.dnscache.util.JsonUtil;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
@@ -30,6 +31,7 @@ public class DnsServiceImpl implements DnsService {
     private final ObjectMapper objectMapper;
     private final long defaultTtl;
     private static final Logger logger = LoggerFactory.getLogger(DnsServiceImpl.class);
+    private final List<String> fallbackServers;
 
     @Autowired
     public DnsServiceImpl(DnsCacheRepository dnsCacheRepository,
@@ -38,6 +40,8 @@ public class DnsServiceImpl implements DnsService {
         this.dnsCacheRepository = dnsCacheRepository;
         this.objectMapper = objectMapper;
         this.defaultTtl = dnsProperties.getTtl();
+
+        this.fallbackServers = dnsProperties.getFallbackServers();
     }
 
     @PostConstruct
@@ -68,23 +72,34 @@ public class DnsServiceImpl implements DnsService {
     }
 
     private Mono<DnsRecord> resolveAndCache(String domain, long ttlSeconds) {
-        return Mono.fromCallable(() -> InetAddress.getByName(domain).getHostAddress())
-                .subscribeOn(Schedulers.boundedElastic())
-                .onErrorResume(throwable -> {
-                    Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
-                    if (cause instanceof UnknownHostException) {
-                        return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid domain: " + domain));
-                    }
-                    logger.error("Unexpected DNS resolution error", throwable);
-                    return Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "DNS lookup failed"));
-                })
+        return resolveWithFallback(domain)
                 .flatMap(ip -> {
                     DnsRecord record = new DnsRecord(domain, ip, ttlSeconds, false);
                     return JsonUtil.safeSerialize(record, objectMapper)
                             .flatMap(json -> dnsCacheRepository.set(domain, json, ttlSeconds)
                                     .thenReturn(record));
+                })
+                .onErrorResume(err -> {
+                    logger.error("DNS resolution failed for domain: {}", domain, err);
+                    return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unable to resolve domain: " + domain));
                 });
     }
+
+    private Mono<String> resolveWithFallback(String domain) {
+        if (fallbackServers == null || fallbackServers.isEmpty()) {
+            return Mono.error(new UnknownHostException("No fallback servers configured"));
+        }
+        Mono<String> chain = Mono.error(new UnknownHostException("No DNS servers tried yet"));
+        for (String server : fallbackServers) {
+            final Mono<String> attempt = Mono.fromCallable(() -> DnsFallbackResolver.resolve(domain, server))
+                    .subscribeOn(Schedulers.boundedElastic());
+
+            chain = chain.onErrorResume(err -> attempt);
+        }
+
+        return chain;
+    }
+
 
     // --- Create ---
     @Override
@@ -95,6 +110,7 @@ public class DnsServiceImpl implements DnsService {
                         .thenReturn(record))
                 .map(DnsRecordMapper::toResponse);
     }
+
 
     // --- Read ---
     @Override
@@ -127,6 +143,7 @@ public class DnsServiceImpl implements DnsService {
                         .flatMap(json -> JsonUtil.safeDeserialize(json, objectMapper)))
                 .map(DnsRecordMapper::toResponse);
     }
+
 
     // --- Update ---
     @Override
