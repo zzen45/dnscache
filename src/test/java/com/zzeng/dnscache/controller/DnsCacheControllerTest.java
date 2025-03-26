@@ -1,5 +1,6 @@
 package com.zzeng.dnscache.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.zzeng.dnscache.dto.DnsRecordCreateRequest;
 import com.zzeng.dnscache.dto.DnsRecordResponse;
 import com.zzeng.dnscache.service.DnsService;
@@ -38,7 +39,7 @@ class DnsCacheControllerTest {
     }
 
     @Test
-    void testCreateManualEntry() {
+    void testCreateManualEntry() throws JsonProcessingException {
         // 1) Define input request
         DnsRecordCreateRequest request = new DnsRecordCreateRequest();
         request.setDomain("test.com");
