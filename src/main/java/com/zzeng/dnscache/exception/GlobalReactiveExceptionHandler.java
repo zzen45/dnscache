@@ -1,6 +1,7 @@
 package com.zzeng.dnscache.exception;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.lang.NonNull;
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -22,7 +23,7 @@ public class GlobalReactiveExceptionHandler implements ErrorWebExceptionHandler 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
+    public @NonNull Mono<Void> handle(@NonNull ServerWebExchange exchange, @NonNull Throwable ex) {
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
         String message = "Unexpected error";
 

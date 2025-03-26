@@ -1,5 +1,7 @@
 package com.zzeng.dnscache.dto;
 
+import java.util.Objects;
+
 public class DnsRecordResponse {
 
     private String domain;
@@ -37,4 +39,19 @@ public class DnsRecordResponse {
     public void setTtl(long ttl) {
         this.ttl = ttl;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof DnsRecordResponse that)) return false;
+        return ttl == that.ttl &&
+                Objects.equals(domain, that.domain) &&
+                Objects.equals(ip, that.ip);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(domain, ip, ttl);
+    }
+
 }

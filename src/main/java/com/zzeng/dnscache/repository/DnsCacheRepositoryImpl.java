@@ -7,6 +7,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.publisher.Flux;
 
 import java.time.Duration;
+import java.util.Objects;
 
 @Repository
 public class DnsCacheRepositoryImpl implements DnsCacheRepository {
@@ -22,7 +23,7 @@ public class DnsCacheRepositoryImpl implements DnsCacheRepository {
     public Mono<String> get(String domain) {
         return redisTemplate.opsForValue()
                 .get(domain)
-                .filter(val -> val != null);
+                .filter(Objects::nonNull);
     }
 
     @Override

@@ -1,6 +1,5 @@
 package com.zzeng.dnscache.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zzeng.dnscache.config.DnsProperties;
 import com.zzeng.dnscache.dto.DnsRecordMapper;
@@ -102,7 +101,7 @@ public class DnsServiceImpl implements DnsService {
 
     // --- Create ---
     @Override
-    public Mono<DnsRecordResponse> createManualEntry(DnsRecord record) throws JsonProcessingException {
+    public Mono<DnsRecordResponse> createManualEntry(DnsRecord record) {
         record.setManual(true);
         return JsonUtil.safeSerialize(record, objectMapper)
                 .flatMap(json -> dnsCacheRepository.set(record.getDomain(), json, record.getTtl())
