@@ -15,7 +15,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/api/dns/resolve?domain=example.com",
+							"raw": "{{base_url}}/api/dns/resolve?domain=google.com",
 							"host": [
 								"{{base_url}}"
 							],
@@ -27,7 +27,7 @@
 							"query": [
 								{
 									"key": "domain",
-									"value": "example.com"
+									"value": "google.com"
 								}
 							]
 						}
