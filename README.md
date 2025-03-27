@@ -3,7 +3,7 @@
 
 ---
 
-## 📦 Features
+## Features
 
 - **Fast DNS Resolution** with configurable TTL
 - **Manual Overrides** for any domain (custom IP + TTL)
@@ -16,18 +16,16 @@
 
 ## Try It Locally (Postman / cURL)
 
-### 🛠 Requirements
-- Java 17+
-- Redis (localhost:6379)
-- Maven
+### Requirements
+- Redis server on (localhost:6379)
+### Run the App in IDE of your choice
 
-Run the App in IDE of your choice
 
 ```bash
 mvn clean package
 mvn spring-boot:run
 
-TRY: API Endpoints
+API Endpoints
 
 | Method | Endpoint                              | Description                        |
 |--------|---------------------------------------|------------------------------------|
