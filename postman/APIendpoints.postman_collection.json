@@ -1,0 +1,372 @@
+{
+	"info": {
+		"_postman_id": "11a85906-d933-40c6-bd60-12954186e065",
+		"name": "Smart DNS Cache API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "43120383"
+	},
+	"item": [
+		{
+			"name": "Resolve",
+			"item": [
+				{
+					"name": "Resolve a domain and Cache it",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/dns/resolve?domain=example.com",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dns",
+								"resolve"
+							],
+							"query": [
+								{
+									"key": "domain",
+									"value": "example.com"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Resolve a domain with custom TTL",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/dns/resolve?domain=example.com&ttl=600",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dns",
+								"resolve"
+							],
+							"query": [
+								{
+									"key": "domain",
+									"value": "example.com"
+								},
+								{
+									"key": "ttl",
+									"value": "600"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get a cached record for domain",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/dns/cache/{domain}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dns",
+								"cache",
+								"{domain}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Manual Entries",
+			"item": [
+				{
+					"name": "Create a manual DNS entry",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \n    \"domain\": \"manualexample.com\", \n    \"ip\": \"192.168.1.123\", \n    \"ttl\": 600 \n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/dns/cache",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dns",
+								"cache"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update TTL for a domain",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ttl\": 900\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}PATCH /api/dns/cache/{domain}/ttl",
+							"host": [
+								"{{base_url}}PATCH "
+							],
+							"path": [
+								"api",
+								"dns",
+								"cache",
+								"{domain}",
+								"ttl"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Read/Inspect",
+			"item": [
+				{
+					"name": "Get all cached records",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/dns/cache",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dns",
+								"cache"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Check if domain exists in cache",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/dns/cache/exists/{domain}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dns",
+								"cache",
+								"exists",
+								"{domain}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get batch cached records",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"domains\":[\"a.com\", \"b.com\"]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/dns/cache/batch",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dns",
+								"cache",
+								"batch"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Delete or Clear",
+			"item": [
+				{
+					"name": "Clear entire cache",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/dns/cache",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dns",
+								"cache"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete a manual entry",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/dns/cache/{domain}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dns",
+								"cache",
+								"{domain}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete all manual entries",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/dns/cache/manual",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dns",
+								"cache",
+								"manual"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete batch of entries",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \n    \"domains\": [\"a.com\", \"b.com\"] \n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/dns/cache/batch",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dns",
+								"cache",
+								"batch"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Error Responses",
+			"item": [
+				{
+					"name": "Should return 400 BAD REQUEST",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/dns/resolve?domain=invalid.abc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dns",
+								"resolve"
+							],
+							"query": [
+								{
+									"key": "domain",
+									"value": "invalid.abc"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Should return 404 NOT FOUND",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/dns/cache/notindb.com",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dns",
+								"cache",
+								"notindb.com"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
